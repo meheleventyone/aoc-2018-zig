@@ -93,23 +93,20 @@ pub fn main() anyerror!void {
         _ = positions.append(Vec2.init(x, y));
     }
 
-    var grid = try direct_allocator.allocator.alloc(i32, @intCast(usize, extent.x * extent.y));
-    defer direct_allocator.allocator.free(grid);
-    
-    std.mem.set(i32, grid, 0);
-    // fill in grid
     var i: u64 = 0;
     var count: i32 = 0;
-    while (i < grid.len) : (i += 1) {
+    var size: u64 = @intCast(u64, extent.x * extent.y);
+    while (i < size) : (i += 1) {
         var entry = @intCast(i32, i);
         var grid_x = @rem(entry, extent.x);
         var grid_y = @divFloor(entry, extent.x);
+        var value: i32 = 0;
         
         for (positions.toSlice()) |position| {
-            grid[i] += position.manhattanDistance(Vec2.init(grid_x, grid_y));
+            value += position.manhattanDistance(Vec2.init(grid_x, grid_y));
         }
 
-        if (grid[i] < 10000) {
+        if (value < 10000) {
             count += 1;
         }
     }
