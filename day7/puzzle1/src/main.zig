@@ -124,6 +124,10 @@ const Node = struct {
             .children = std.ArrayList(u8).init(allocator),
         };
     }
+
+    pub fn deinit(self: *Node) void {
+        self.children.deinit();
+    }
 };
 
 fn insert_by_ascii_value(step: u8, execution_list: *std.ArrayList(u8)) void {
@@ -144,6 +148,7 @@ pub fn main() anyerror!void {
 
     // text format implies each step only occurs once in the graph so just ref through the hashmap
     var nodes = std.AutoHashMap(u8, Node).init(&direct_allocator.allocator);
+    defer nodes.deinit();
 
     var lines = std.mem.split(input, "\n");
     while (lines.next()) |line| {
@@ -170,7 +175,11 @@ pub fn main() anyerror!void {
     }
 
     var current_execution = std.ArrayList(u8).init(&direct_allocator.allocator);
+    defer current_execution.deinit();
+
     var results = std.ArrayList(u8).init(&direct_allocator.allocator);
+    defer results.deinit();
+
     var node_iterator = nodes.iterator();
     while (node_iterator.next()) |node| {
         if (node.value.prereqs_remaining == 0) {
@@ -195,4 +204,9 @@ pub fn main() anyerror!void {
 
     }
     std.debug.warn("Result {}\n", results.toSlice());
+
+    // cleanup node memory
+    while (node_iterator.next()) |node| {
+        node.value.deinit();
+    }
 }

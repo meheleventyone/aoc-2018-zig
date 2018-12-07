@@ -124,6 +124,10 @@ const Node = struct {
             .children = std.ArrayList(u8).init(allocator),
         };
     }
+    
+    pub fn deinit(self: *Node) void {
+        self.children.deinit();
+    }
 };
 
 fn insert_by_ascii_value(step: u8, execution_list: *std.ArrayList(u8)) void {
@@ -148,6 +152,7 @@ pub fn main() anyerror!void {
 
     // text format implies each step only occurs once in the graph so just ref through the hashmap
     var nodes = std.AutoHashMap(u8, Node).init(&direct_allocator.allocator);
+    defer nodes.deinit();
 
     var lines = std.mem.split(input, "\n");
     while (lines.next()) |line| {
@@ -174,6 +179,7 @@ pub fn main() anyerror!void {
     }
 
     var task_list = std.ArrayList(u8).init(&direct_allocator.allocator);
+    defer task_list.deinit();
 
     var node_iterator = nodes.iterator();
     while (node_iterator.next()) |node| {
@@ -200,6 +206,11 @@ pub fn main() anyerror!void {
 
     // the actual tick we finished work is one earlier than when we gave up
     std.debug.warn("Ticks {}\n", ticks - 1);
+
+    // cleanup node memory
+    while (node_iterator.next()) |node| {
+        node.value.deinit();
+    }
 }
 
 const Worker = struct {
