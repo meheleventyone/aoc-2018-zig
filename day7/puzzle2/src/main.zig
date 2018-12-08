@@ -190,22 +190,38 @@ pub fn main() anyerror!void {
 
     var ticks: usize = 0;
     var workers: [5]Worker = []Worker{Worker.init()} ** 5;
-    var workers_running: usize = 0;
+    var workers_running: bool = false;
     while (true) : (ticks += 1) {
-        workers_running = 0;
-        for (workers) |*worker, i| {
-            if (worker.update(ticks, &task_list, &nodes)) {
-                workers_running += 1;
+        // check for completions
+        for (workers) |*worker| {
+            if (worker.running()) {
+                worker.checkComplete(ticks, &task_list, &nodes);
             }
         }
 
-        if (task_list.len == 0 and workers_running == 0) {
+        // assign new work
+        for (workers) |*worker| {
+            if (!worker.running()) {
+                worker.getNewTask(ticks, &task_list, &nodes);
+            }
+        }
+
+        workers_running = false;
+        // are we done?
+        for (workers) |*worker| {
+            if (worker.running()) {
+                workers_running = true;
+                break;
+            }
+        }
+
+        if (task_list.len == 0 and !workers_running) {
             break;
         }
     }
 
     // the actual tick we finished work is one earlier than when we gave up
-    std.debug.warn("Ticks {}\n", ticks - 1);
+    std.debug.warn("Ticks {}\n", ticks);
 
     // cleanup node memory
     while (node_iterator.next()) |node| {
@@ -225,24 +241,29 @@ const Worker = struct {
             .has_step = false,
         };
     }
+
+    fn running(self: *Worker) bool {
+        return self.has_step;
+    }
     
-    fn update(self: *Worker, tick: usize, task_list: *std.ArrayList(u8), steps: *std.AutoHashMap(u8, Node)) bool {
+    fn checkComplete(self: *Worker, tick: usize, task_list: *std.ArrayList(u8), steps: *std.AutoHashMap(u8, Node)) void {
         if (self.end_tick > tick) {
-            return true;
+            return;
         }
 
         if (self.has_step) {
             self.completeStep(task_list, steps);
         }
+    }
 
+    fn getNewTask(self: *Worker, tick: usize, task_list: *std.ArrayList(u8), steps: *std.AutoHashMap(u8, Node)) void {
         if (task_list.len == 0) {
-            return false;
+            return;
         }
 
         self.step = task_list.pop();
         self.has_step = true;
         self.end_tick = tick + execution_time(self.step);
-        return true;
     }
 
     fn completeStep(self: *Worker, task_list: *std.ArrayList(u8), steps: *std.AutoHashMap(u8, Node)) void {
